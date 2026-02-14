@@ -19,7 +19,7 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await API.post("/auth/login", form);
+      const res = await API.post("/api/auth/login", form);
 
       const { token, user } = res.data;
 
