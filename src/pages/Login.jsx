@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API from "../services/api";
+import toast from "react-hot-toast";
 import "../styles/auth.css";
 
 export default function Login() {
-  const [form, setForm] = useState({
-    email: "",
-    password: ""
-  });
-
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -17,24 +16,28 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       const res = await API.post("/auth/login", form);
-
       const { token, user } = res.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      if (user.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/user/dashboard");
-      }
+      toast.success("Login Successful ✅");
 
-    } catch (error) {
-      alert("Invalid Credentials ❌");
+      setTimeout(() => {
+        navigate(user.role === "admin"
+          ? "/admin/dashboard"
+          : "/user/dashboard");
+      }, 1000);
+
+    } catch {
+      toast.error("Invalid Credentials ❌");
     }
+
+    setLoading(false);
   };
 
   return (
@@ -50,15 +53,26 @@ export default function Login() {
           required
         />
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
+        <div className="password-field">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            onChange={handleChange}
+            required
+          />
+          <span onClick={() => setShowPassword(!showPassword)}>
+            {showPassword ? "Hide" : "Show"}
+          </span>
+        </div>
 
-        <button type="submit">Login</button>
+        <div style={{ textAlign: "right", marginBottom: "10px" }}>
+          <Link to="/forgot-password">Forgot Password?</Link>
+        </div>
+
+        <button type="submit" disabled={loading}>
+          {loading ? <div className="spinner"></div> : "Login"}
+        </button>
 
         <p>
           Don't have account? <Link to="/register">Register</Link>

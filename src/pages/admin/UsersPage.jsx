@@ -3,151 +3,174 @@ import API from "../../services/api";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, search]);
 
   const fetchUsers = async () => {
     try {
-      const res = await API.get("/admin/users");
-      setUsers(res.data);
+      const res = await API.get(
+        `/admin/users?page=${page}&limit=5&search=${search}`
+      );
+
+      setUsers(res.data.users || []);
+      setTotalPages(res.data.totalPages || 1);
+
     } catch (error) {
       console.error(error);
+      setUsers([]);
     }
   };
 
+  const deleteUser = async (id) => {
+    if (!window.confirm("Delete this user?")) return;
+    await API.delete(`/admin/users/${id}`);
+    fetchUsers();
+  };
+
+  const updateUser = async () => {
+    await API.put(`/admin/users/${editingUser._id}`, {
+      name: editingUser.name,
+      role: editingUser.role,
+    });
+    setEditingUser(null);
+    fetchUsers();
+  };
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>👥 All Users</h2>
-          <span style={styles.count}>{users.length} Users</span>
-        </div>
+    <>
+      <h2>All Users</h2>
 
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.theadRow}>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Email</th>
-                <th style={styles.th}>Role</th>
+      <input
+        type="text"
+        placeholder="Search by name or email..."
+        value={search}
+        onChange={(e) => {
+          setPage(1);
+          setSearch(e.target.value);
+        }}
+        style={{ padding: "8px", marginBottom: "15px" }}
+      />
+
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {users.length === 0 ? (
+            <tr>
+              <td colSpan="4" style={{ textAlign: "center" }}>
+                No users found
+              </td>
+            </tr>
+          ) : (
+            users.map((user) => (
+              <tr key={user._id}>
+                <td>{user.name}</td>
+                <td>{user.email}</td>
+                <td>{user.role}</td>
+                <td>
+                  <button onClick={() => setEditingUser(user)}>
+                    Edit
+                  </button>
+                  <button
+                    style={{ marginLeft: "8px", color: "red" }}
+                    onClick={() => deleteUser(user._id)}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-
-            <tbody>
-              {users.map((user) => (
-                <tr key={user._id} style={styles.tr}>
-                  <td style={styles.td}>{user.name}</td>
-                  <td style={styles.td}>{user.email}</td>
-                  <td style={styles.td}>
-                    <span
-                      style={{
-                        ...styles.badge,
-                        background:
-                          user.role === "admin"
-                            ? "#4f46e5"
-                            : "#10b981"
-                      }}
-                    >
-                      {user.role}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {users.length === 0 && (
-            <div style={styles.empty}>No users found 🚫</div>
+            ))
           )}
-        </div>
+        </tbody>
+      </table>
+
+      <div style={{ marginTop: "15px" }}>
+        <button
+          disabled={page === 1}
+          onClick={() => setPage(page - 1)}
+        >
+          Prev
+        </button>
+
+        <span style={{ margin: "0 10px" }}>
+          Page {page} of {totalPages}
+        </span>
+
+        <button
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </button>
       </div>
-    </div>
+
+      {editingUser && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0,0,0,0.3)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+          <div style={{
+            background: "#fff",
+            padding: "20px",
+            borderRadius: "8px"
+          }}>
+            <h3>Edit User</h3>
+
+            <input
+              value={editingUser.name}
+              onChange={(e) =>
+                setEditingUser({
+                  ...editingUser,
+                  name: e.target.value
+                })
+              }
+            />
+
+            <select
+              value={editingUser.role}
+              onChange={(e) =>
+                setEditingUser({
+                  ...editingUser,
+                  role: e.target.value
+                })
+              }
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+
+            <div style={{ marginTop: "10px" }}>
+              <button onClick={updateUser}>Save</button>
+              <button
+                style={{ marginLeft: "10px" }}
+                onClick={() => setEditingUser(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
-const styles = {
-  container: {
-    padding: "30px",
-    background: "#f3f4f6",
-    minHeight: "100vh"
-  },
-
-  card: {
-    background: "#ffffff",
-    borderRadius: "16px",
-    padding: "25px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)"
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px"
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "22px",
-    fontWeight: "600",
-    color: "#111827"
-  },
-
-  count: {
-    background: "#e0e7ff",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#4338ca"
-  },
-
-  tableWrapper: {
-    overflowX: "auto"
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse"
-  },
-
-  theadRow: {
-    background: "#f9fafb"
-  },
-
-  th: {
-    padding: "14px",
-    textAlign: "left",
-    fontSize: "14px",
-    color: "#6b7280",
-    borderBottom: "1px solid #e5e7eb"
-  },
-
-  tr: {
-    transition: "all 0.2s ease",
-  },
-
-  td: {
-    padding: "14px",
-    borderBottom: "1px solid #f3f4f6",
-    fontSize: "14px",
-    color: "#374151"
-  },
-
-  badge: {
-    padding: "6px 12px",
-    borderRadius: "20px",
-    color: "#ffffff",
-    fontSize: "12px",
-    fontWeight: "500",
-    textTransform: "capitalize"
-  },
-
-  empty: {
-    padding: "20px",
-    textAlign: "center",
-    color: "#9ca3af"
-  }
-};
