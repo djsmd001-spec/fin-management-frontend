@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "../../services/api";
+import toast from "react-hot-toast";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -7,6 +8,9 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [editingUser, setEditingUser] = useState(null);
+
+  const [resetUser, setResetUser] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -20,7 +24,6 @@ export default function UsersPage() {
 
       setUsers(res.data.users || []);
       setTotalPages(res.data.totalPages || 1);
-
     } catch (error) {
       console.error(error);
       setUsers([]);
@@ -40,6 +43,28 @@ export default function UsersPage() {
     });
     setEditingUser(null);
     fetchUsers();
+  };
+
+  const handleAdminReset = async () => {
+    if (!newPassword) {
+      toast.error("Enter new password");
+      return;
+    }
+
+    try {
+      await API.post("/auth/admin-reset-password", {
+        userId: resetUser._id,
+        newPassword,
+      });
+
+      toast.success("Password reset successfully ✅");
+      setResetUser(null);
+      setNewPassword("");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Reset failed"
+      );
+    }
   };
 
   return (
@@ -84,11 +109,27 @@ export default function UsersPage() {
                   <button onClick={() => setEditingUser(user)}>
                     Edit
                   </button>
+
                   <button
                     style={{ marginLeft: "8px", color: "red" }}
                     onClick={() => deleteUser(user._id)}
                   >
                     Delete
+                  </button>
+
+                  <button
+                    style={{
+                      marginLeft: "8px",
+                      background: "#e74a3b",
+                      color: "white",
+                      border: "none",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setResetUser(user)}
+                  >
+                    Reset Password
                   </button>
                 </td>
               </tr>
@@ -97,34 +138,15 @@ export default function UsersPage() {
         </tbody>
       </table>
 
-      <div style={{ marginTop: "15px" }}>
-        <button
-          disabled={page === 1}
-          onClick={() => setPage(page - 1)}
-        >
-          Prev
-        </button>
-
-        <span style={{ margin: "0 10px" }}>
-          Page {page} of {totalPages}
-        </span>
-
-        <button
-          disabled={page === totalPages}
-          onClick={() => setPage(page + 1)}
-        >
-          Next
-        </button>
-      </div>
-
-      {editingUser && (
+      {/* RESET PASSWORD MODAL */}
+      {resetUser && (
         <div style={{
           position: "fixed",
           top: 0,
           left: 0,
           width: "100%",
           height: "100%",
-          background: "rgba(0,0,0,0.3)",
+          background: "rgba(0,0,0,0.4)",
           display: "flex",
           justifyContent: "center",
           alignItems: "center"
@@ -132,38 +154,31 @@ export default function UsersPage() {
           <div style={{
             background: "#fff",
             padding: "20px",
-            borderRadius: "8px"
+            borderRadius: "8px",
+            width: "300px"
           }}>
-            <h3>Edit User</h3>
+            <h3>Reset Password</h3>
+            <p>{resetUser.email}</p>
 
             <input
-              value={editingUser.name}
-              onChange={(e) =>
-                setEditingUser({
-                  ...editingUser,
-                  name: e.target.value
-                })
-              }
+              type="password"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={{ width: "100%", padding: "8px" }}
             />
 
-            <select
-              value={editingUser.role}
-              onChange={(e) =>
-                setEditingUser({
-                  ...editingUser,
-                  role: e.target.value
-                })
-              }
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
-
             <div style={{ marginTop: "10px" }}>
-              <button onClick={updateUser}>Save</button>
+              <button onClick={handleAdminReset}>
+                Confirm
+              </button>
+
               <button
                 style={{ marginLeft: "10px" }}
-                onClick={() => setEditingUser(null)}
+                onClick={() => {
+                  setResetUser(null);
+                  setNewPassword("");
+                }}
               >
                 Cancel
               </button>
